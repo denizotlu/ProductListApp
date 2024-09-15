@@ -14,19 +14,27 @@ class ViewController: UIViewController {
     private let searchBar = UISearchBar()
     
     private var products: [Product] = []
+    
+    
+    private var filteredProducts: [Product] = []
+    private var isSearching = false
+
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         fetchProducts()
+        
+
     }
 
     private func setupUI() {
-        view.backgroundColor = .white
+        view.backgroundColor = .systemBackground
         
         searchBar.placeholder = "Ürün Ara"
         searchBar.delegate = self
         view.addSubview(searchBar)
+        searchBar.showsCancelButton = true
         searchBar.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide.snp.top)
             make.left.right.equalToSuperview()
@@ -38,7 +46,7 @@ class ViewController: UIViewController {
         layout.minimumInteritemSpacing = 10
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
-        collectionView.backgroundColor = .systemBackground
+        collectionView.backgroundColor = .systemPink
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.register(HomeCollectionViewCell.self, forCellWithReuseIdentifier: "cell")
@@ -74,28 +82,42 @@ class ViewController: UIViewController {
 
 extension ViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return products.count
+        // Arama yapılıyorsa filtrelenmiş ürünleri göster
+               return isSearching ? filteredProducts.count : products.count
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! HomeCollectionViewCell
-        let product = products[indexPath.row]
+        
+        // Arama yapılıyorsa filtrelenmiş ürünleri, yoksa tüm ürünleri göster
+        let product = isSearching ? filteredProducts[indexPath.row] : products[indexPath.row]
         
         cell.titleLabel.text = product.title
         cell.priceLabel.text = "\(product.price) TL"
         
-        if let url = URL(string: product.thumbnail) {
-            DispatchQueue.global().async {
-                if let data = try? Data(contentsOf: url) {
+        
+        let url = URL(string: product.thumbnail)
+        
+        URLSession.shared.dataTask(with: url!) { data, response, error in
+            if error != nil {
+                print("error")
+                
+            }else{
+                if data != nil  {
+                    
+                    let image = UIImage(data: data!)
                     
                     DispatchQueue.main.async {
-                        cell.imageView.image = UIImage(data: data)
+                        cell.imageView.image = UIImage(data: data!)
                     }
                 }
+                
             }
-        }
+            
+        }.resume()
         
         return cell
+        
     }
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
@@ -104,8 +126,44 @@ extension ViewController: UICollectionViewDataSource, UICollectionViewDelegateFl
     }
 }
 
+
+
+
 extension ViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchText.isEmpty {
+            // Arama çubuğu boşsa tüm ürünleri göster
+            isSearching = false
+
+        } else {
+            // Arama metnine göre ürünleri filtrele
+            isSearching = true
+            filteredProducts = products.filter {$0.title.lowercased().contains(searchText.lowercased())}
+        }
+        collectionView.reloadData()
+    }
+    
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        // Arama iptal edildiğinde tüm ürünleri göster
+        isSearching = false
+        searchBar.text = ""
+        searchBar.resignFirstResponder() //Klavye gizle
+        collectionView.reloadData()
+    }
+    
+    
+    
+    
+}
+
+
+extension ViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let product = isSearching ? filteredProducts[indexPath.row] : products[indexPath.row]
+
+        let detailVC = DetailViewController()
+        detailVC.product = product // Seçilen ürünü detay sayfasına geçir
+        navigationController?.pushViewController(detailVC, animated: true)
     }
 }
 

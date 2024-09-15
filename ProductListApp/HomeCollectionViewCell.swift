@@ -42,7 +42,8 @@ class HomeCollectionViewCell: UICollectionViewCell {
         // Fiyat etiketini ekleme
         priceLabel.textAlignment = .center
         priceLabel.font = UIFont.systemFont(ofSize: 14)
-        priceLabel.textColor = .red
+        priceLabel.textColor = .black
+        priceLabel.backgroundColor = .brown
         contentView.addSubview(priceLabel)
         priceLabel.snp.makeConstraints { make in
             make.top.equalTo(titleLabel.snp.bottom).offset(5)
